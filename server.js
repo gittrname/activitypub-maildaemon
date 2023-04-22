@@ -1,6 +1,5 @@
 const SMTPServer = require('smtp-server').SMTPServer;
 const simpleParser = require('mailparser').simpleParser;
-const jconv = require('jconv');
 const Misskey = require('misskey-js');
 
 const apiOption = {
@@ -9,13 +8,15 @@ const apiOption = {
 };
 
 // DMをMisskeyユーザーに送る
-async function sendDmNote(mail) {
-    console.log('receive mail address:' + mail.to.text);
+async function sendDmNote(fromAddr, toAddr, subject, body) {
+    console.log('receive mail address From=' + fromAddr + ', To=' + toAddr);
 
-    const [username, domain] = mail.to.text.split('@', 2);
-    const text = "@" + mail.to.text + "\n"
-        + "件名「" + mail.subject + "」\n"
-        + mail.text;
+    const [username, domain] = toAddr.split('@', 2);
+    const text = "@" + toAddr + "\n"
+        + "件名「" + subject + "」\n"
+        + "-------------------------------------------\n"
+        + body
+        + "-------------------------------------------\n";
 
     // APIクライアント
     const cli = new Misskey.api.APIClient(apiOption);
@@ -27,7 +28,8 @@ async function sendDmNote(mail) {
         limit: 1
     });
     if (userArr.length == 0) {
-        return new Error('Not found account.');
+        console.log('Not found account. [' + toAddr + ']');
+        return null;
     }
 
     // DMノートを作成
@@ -38,7 +40,7 @@ async function sendDmNote(mail) {
         localOnly: true
     });
     console.log(meta);
-
+    return meta;
 }
 
 
@@ -63,14 +65,25 @@ const server = new SMTPServer({
     onData(source, session, callback) {
         simpleParser(source)
             .then(function(mail) {
-                sendDmNote(mail);
+
+                // アドレス一覧取得
+                toAddrs = mail.to.value;
+
+                // Promiseオブジェクト生成
+                let promises = [];
+                toAddrs.forEach(function(to) {
+                    promises.push(
+                        sendDmNote(mail.from.text, to.address, mail.subject, mail.text)
+                    );
+                });
+
+                // 一気に送る
+                return Promise.all(promises);
             })
             .catch(function(err) {
                 return callback(err);
-            })
-            .finally(function() {
-                source.on('end', callback);
             });
+        source.on('end', callback);
     }
 });
 

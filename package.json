@@ -1,6 +1,6 @@
 {
   "name": "activitypub-maildaemon",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "description": "メールを受信してDMを送るなんの意味があるかわからないツール",
   "author": "gittrname",
   "license": "MIT",
