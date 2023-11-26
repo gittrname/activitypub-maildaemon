@@ -87,7 +87,7 @@ const server = new SMTPServer({
     }
 });
 
-server.listen(25)
+server.listen(process.env.SMTP_PORT)
     .on('error',  function(err) {
         console.log(err.name, err.message, err.stack);
     });
